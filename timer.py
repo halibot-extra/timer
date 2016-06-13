@@ -50,7 +50,11 @@ class Timer(HalModule):
 		if not msg.body.startswith("!timer "):
 			return
 
-		cmd, tstring, message = msg.body.split(" ",2)
+		try:
+			cmd, tstring, message = msg.body.split(" ",2)
+		except Exception as e:
+			self.error(msg, str(e))
+			return
 
 		td = get_timedelta(tstring)
 		if not td:
