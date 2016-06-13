@@ -46,6 +46,9 @@ class Timer(HalModule):
 	def sendmsg(self, msg, body):
 		self.reply(msg, body=body)
 
+	def queue_message(self, msg, secs, message):
+			self.eventloop.call_later(secs, self.sendmsg, *(msg, msg.author + ": " + message))
+
 	def receive(self, msg):
 		if not msg.body.startswith("!timer "):
 			return
@@ -63,7 +66,7 @@ class Timer(HalModule):
 
 		secs = int(td.total_seconds())
 		try:
-			self.eventloop.call_later(secs, self.sendmsg, *(msg, msg.author + ": " + message))
+			self.queue_message(msg, secs, message)
 		except Exception as e:
 			self.error(msg, str(e))
 			return
