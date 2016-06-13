@@ -40,6 +40,9 @@ class Timer(HalModule):
 	def init(self):
 		pass
 
+	def error(self, msg, string):
+		self.reply(msg, body="Timer failed: " + string)
+
 	def sendmsg(self, msg, body):
 		self.reply(msg, body=body)
 
@@ -51,14 +54,14 @@ class Timer(HalModule):
 
 		td = get_timedelta(tstring)
 		if not td:
-			self.reply(msg, body="Timer failed: Could not parse time string")
+			self.error(msg, "Could not parse time string")
 			return
 
 		secs = int(td.total_seconds())
 		try:
 			self.eventloop.call_later(secs, self.sendmsg, *(msg, msg.author + ": " + message))
 		except Exception as e:
-			self.reply(msg, body="Timer failed: {}".format(str(e)))
+			self.error(msg, str(e))
 			return
 
 		self.reply(msg, body="Timer set for {} seconds from now".format(secs))
