@@ -4,6 +4,7 @@ import re
 
 regex = re.compile("(?:(\d+h))?(?:(\d+m))?(?:(\d+s))?")
 
+# Parse the time setting string, and return a dictionary for timedelta kwargs
 def parsetime(tup):
 	ret = {}
 	for i in tup:
@@ -15,7 +16,23 @@ def parsetime(tup):
 			ret["seconds"] = int(i[:-1])
 		elif i[-1] == "m":
 			ret["minutes"] = int(i[:-1])
+
+	if not ret.items():
+		return None
 	return ret
+
+
+# Convert a string to a timedelta object
+def get_timedelta(string):
+	m = regex.match(string)
+	if not m:
+		return None
+
+	timedict = parsetime(m.groups())
+	if not timedict:
+		return None
+
+	return timedelta(**timedict)
 
 	
 class Timer(HalModule):
@@ -28,18 +45,18 @@ class Timer(HalModule):
 
 	def receive(self, msg):
 		if not msg.body.startswith("!timer "):
-			return None
-		string, args = msg.body.split(" ",1)
-		string, args = args.split(" ",1)
-		m = regex.match(string)
-		if not m:
+			return
+
+		cmd, tstring, message = msg.body.split(" ",2)
+
+		td = get_timedelta(tstring)
+		if not td:
 			self.reply(msg, body="Timer failed: Could not parse time string")
 			return
 
-		secs = 0
+		secs = int(td.total_seconds())
 		try:
-			secs = int(timedelta(**parsetime(m.groups())).total_seconds())
-			self.eventloop.call_later(secs, self.sendmsg, *(msg, msg.author + ": " + args))
+			self.eventloop.call_later(secs, self.sendmsg, *(msg, msg.author + ": " + message))
 		except Exception as e:
 			self.reply(msg, body="Timer failed: {}".format(str(e)))
 			return
