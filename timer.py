@@ -69,6 +69,14 @@ class Timer(HalModule):
 			self.error(msg, str(e))
 			return
 
+		if tstring in ("cancel", "delete"):
+			if message in self.timers:
+				self.timers.pop(message).cancel()
+				self.reply(msg, body="Timer '{}' cancelled".format(message))
+			else:
+				self.reply(msg, body="Timer '{}' not found!".format(message))
+			return
+
 		td = get_timedelta(tstring)
 		if not td:
 			self.error(msg, "Could not parse time string")
