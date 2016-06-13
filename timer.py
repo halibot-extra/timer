@@ -1,6 +1,7 @@
 from halibot import HalModule
 from datetime import timedelta
 import re
+import uuid
 
 regex = re.compile("(?:(\d+h))?(?:(\d+m))?(?:(\d+s))?")
 
@@ -34,20 +35,29 @@ def get_timedelta(string):
 
 	return timedelta(**timedict)
 
-	
+
+# Get a random string to use as an ID
+def get_randstring():
+	return uuid.uuid4().hex[:6]
+
 class Timer(HalModule):
 
 	def init(self):
-		pass
+		self.timers = {}
 
 	def error(self, msg, string):
 		self.reply(msg, body="Timer failed: " + string)
 
-	def sendmsg(self, msg, body):
+	def sendmsg(self, msg, idstr, body):
 		self.reply(msg, body=body)
+		self.timers.pop(idstr)
 
 	def queue_message(self, msg, secs, message):
-			self.eventloop.call_later(secs, self.sendmsg, *(msg, msg.author + ": " + message))
+			idstr = get_randstring()
+			callback = self.eventloop.call_later(secs, self.sendmsg, *(msg, idstr, msg.author + ": " + message))
+			self.timers[idstr] = callback
+			return idstr
+
 
 	def receive(self, msg):
 		if not msg.body.startswith("!timer "):
@@ -65,10 +75,11 @@ class Timer(HalModule):
 			return
 
 		secs = int(td.total_seconds())
+		idstr = ""
 		try:
-			self.queue_message(msg, secs, message)
+			idstr = self.queue_message(msg, secs, message)
 		except Exception as e:
 			self.error(msg, str(e))
 			return
 
-		self.reply(msg, body="Timer set for {} seconds from now".format(secs))
+		self.reply(msg, body="Timer '{}' set for {} seconds from now".format(idstr, secs))
