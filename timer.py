@@ -18,13 +18,13 @@ def parsetime(tup):
 	return ret
 
 	
-def sendmsg(bot, msg, body):
-	bot.reply(msg, body=body)
-
 class Timer(HalModule):
 
 	def init(self):
 		pass
+
+	def sendmsg(self, msg, body):
+		self.reply(msg, body=body)
 
 	def receive(self, msg):
 		if not msg.body.startswith("!timer "):
@@ -39,7 +39,7 @@ class Timer(HalModule):
 		secs = 0
 		try:
 			secs = int(timedelta(**parsetime(m.groups())).total_seconds())
-			self.eventloop.call_later(secs, sendmsg, *(self, msg, msg.author + ": " + args))
+			self.eventloop.call_later(secs, self.sendmsg, *(msg, msg.author + ": " + args))
 		except Exception as e:
 			self.reply(msg, body="Timer failed: {}".format(str(e)))
 			return
