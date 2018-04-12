@@ -1,5 +1,6 @@
 from halibot import HalModule
 from datetime import timedelta
+import time
 import re
 import uuid
 
@@ -40,10 +41,19 @@ def get_timedelta(string):
 def get_randstring():
 	return uuid.uuid4().hex[:6]
 
+def tohuman(x):
+	x = int(x)
+	if x // 3600:
+		return "{}h{}m{}s".format(x // 3600, (x % 3600) // 60, ((x % 3600) % 60))
+	elif x // 60:
+		return "{}m{}s".format(x // 60, x % 60)
+	return "{}s".format(x)
+
 class Timer(HalModule):
 
 	def init(self):
 		self.timers = {}
+		self.watches = {}
 
 	def error(self, msg, string):
 		self.reply(msg, body="Timer failed: " + string)
@@ -58,6 +68,16 @@ class Timer(HalModule):
 			self.timers[idstr] = callback
 			return idstr
 
+	def stopwatch(self, msg, mode, name):
+		if mode == "start":
+			self.watches[name] = time.time()
+			self.reply(msg, body="Stopwatch '{}' started!".format(name))
+		else:
+			ret = self.watches.pop(name, None) if mode == "stop" else self.watches.get(name, None)
+			if not ret:
+				self.reply(msg, body="No watch named '{}' was started...".format(name))
+				return
+			self.reply(msg, body="Time elapsed for '{}': {}".format(name, tohuman(time.time() - ret)))
 
 	def receive(self, msg):
 		if not msg.body.startswith("!timer "):
@@ -76,6 +96,21 @@ class Timer(HalModule):
 			else:
 				self.reply(msg, body="Timer '{}' not found!".format(message))
 			return
+		elif tstring in ("start","stop","check"):
+			if not message:
+				self.reply(msg, body="Need a stopwatch name!")
+				return
+			self.stopwatch(msg, tstring, message)
+			return
+		elif tstring in ("at"):
+			self.reply(msg, body="This is not yet supported")
+			return
+			try:
+				tstring, message = message.split(" ",1)
+				self.abstime(msg, tstring, message)
+			except Exception as e:
+				self.reply(msg, body="Error setting timer: {}".format(e))
+			return
 
 		td = get_timedelta(tstring)
 		if not td:
@@ -91,3 +126,4 @@ class Timer(HalModule):
 			return
 
 		self.reply(msg, body="Timer '{}' set for {} seconds from now".format(idstr, secs))
+
